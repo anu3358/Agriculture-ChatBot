@@ -4,7 +4,8 @@ from gtts import gTTS
 import os
 import uuid
 
-groq_client = Groq(api_key="")  # Insert your Groq API key
+# Load your API key securely from Streamlit Secrets
+groq_client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
 # Ensure necessary folders exist
 os.makedirs("static/audio", exist_ok=True)
