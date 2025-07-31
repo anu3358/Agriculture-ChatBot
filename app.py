@@ -1,89 +1,79 @@
-import os
-from flask import Flask, render_template, request, jsonify, url_for
-from werkzeug.utils import secure_filename
-from gtts import gTTS
-import random
-import string
-
+import streamlit as st
 from groq import Groq
+from gtts import gTTS
+import os
+import uuid
 
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['ALLOWED_EXTENSIONS'] = {'webm', 'wav', 'mp3', 'm4a'}
+groq_client = Groq(api_key="")  # Insert your Groq API key
 
-groq_client = Groq(api_key="")
+# Ensure necessary folders exist
+os.makedirs("static/audio", exist_ok=True)
+os.makedirs("uploads", exist_ok=True)
 
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
-
-
-def transcribe_audio_groq(filepath):
+def transcribe_audio(filepath):
     with open(filepath, "rb") as f:
         response = groq_client.audio.transcriptions.create(
             model="whisper-large-v3-turbo",
             file=f,
         )
-        return response.text
+    return response.text
 
-
-def get_answer_groq(question):
+def get_answer(question):
     response = groq_client.chat.completions.create(
         model="llama3-70b-8192",
         messages=[
-           {"role": "system", "content": "You are a helpful agriculture chatbot for Indian farmers."},
-            {"role": "user", "content": "Give a Brief Of Agriculture Seasons in India"},
-            {"role": "system", "content":
-             "In India, the agricultural season consists of three major seasons: the Kharif (monsoon), the Rabi (winter), and the Zaid (summer)..."},
+            {"role": "system", "content": "You are a helpful agriculture chatbot for Indian farmers."},
             {"role": "user", "content": question}
-        ],
+        ]
     )
     return response.choices[0].message.content
 
-
-def text_to_audio(text, filename):
+def text_to_speech(text):
+    filename = f"{uuid.uuid4().hex}.mp3"
+    path = os.path.join("static/audio", filename)
     tts = gTTS(text)
-    audio_path = os.path.join("static/audio", f"{filename}.mp3")
-    tts.save(audio_path)
-    return audio_path
+    tts.save(path)
+    return path
 
+st.set_page_config(page_title="Agriculture Chatbot", layout="centered")
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+st.title("🌾 Agriculture Chatbot")
+st.write("Ask your farming questions by typing or uploading voice.")
 
+option = st.radio("Choose input type:", ("Text", "Audio"))
 
-@app.route('/chat', methods=['POST'])
-def chat():
-    if 'audio' in request.files:
-        audio = request.files['audio']
-        if audio and allowed_file(audio.filename):
-            filename = secure_filename(audio.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            audio.save(filepath)
-            transcription = transcribe_audio_groq(filepath)
-            answer = get_answer_groq(transcription)
-            voice_filename = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-            text_to_audio(answer, voice_filename)
-            return jsonify({
-                'text': f"🎤 Transcribed: {transcription}\n\n🤖 Answer: {answer}",
-                'voice': url_for('static', filename='audio/' + voice_filename + '.mp3')
-            })
+if option == "Text":
+    question = st.text_input("Enter your question:")
+    if st.button("Ask"):
+        if question.strip():
+            with st.spinner("🤖 Thinking..."):
+                answer = get_answer(question)
+                audio_path = text_to_speech(answer)
+                st.success("✅ Answer received!")
+                st.markdown("**📝 Answer:**")
+                st.write(answer)
+                st.audio(audio_path)
+        else:
+            st.warning("Please enter a question.")
 
-    elif 'text' in request.form:
-        question = request.form['text']
-        answer = get_answer_groq(question)
-        voice_filename = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-        text_to_audio(answer, voice_filename)
-        return jsonify({
-            'text': answer,
-            'voice': url_for('static', filename='audio/' + voice_filename + '.mp3')
-        })
+elif option == "Audio":
+    audio_file = st.file_uploader("Upload your voice question", type=["mp3", "wav", "m4a"])
+    if st.button("Submit Audio"):
+        if audio_file:
+            filepath = os.path.join("uploads", audio_file.name)
+            with open(filepath, "wb") as f:
+                f.write(audio_file.read())
 
-    return jsonify({'text': 'No valid input found'}), 400
+            with st.spinner("🎧 Transcribing and answering..."):
+                transcribed = transcribe_audio(filepath)
+                answer = get_answer(transcribed)
+                audio_path = text_to_speech(answer)
 
-
-if __name__ == '__main__':
-    os.makedirs("uploads", exist_ok=True)
-    os.makedirs("static/audio", exist_ok=True)
-    app.run(debug=True)
+                st.success("✅ Answer ready!")
+                st.markdown("**🎤 Transcribed Question:**")
+                st.write(transcribed)
+                st.markdown("**📝 Answer:**")
+                st.write(answer)
+                st.audio(audio_path)
+        else:
+            st.warning("Please upload an audio file.")
