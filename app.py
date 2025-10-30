@@ -63,7 +63,7 @@ def get_answer(question):
 
     try:
         response = groq_client.chat.completions.create(
-            model=model="llama-3.3-70b-versatile",  # correct model name
+            model="llama-3.3-70b-versatile",  # correct model name
             messages=[
                 {"role": "system", "content": "You are a helpful agriculture chatbot for Indian farmers. Give short, practical, and clear answers in simple English or Hindi."},
                 {"role": "user", "content": question}
@@ -139,4 +139,5 @@ elif option == "Audio":
                         st.write(answer)
                         if audio_path:
                             st.audio(audio_path)
+
 
