@@ -5,9 +5,13 @@ import os
 import uuid
 
 # ----------------------------
-# 🔑 Load API Key from Secrets
+# 🔑 Load API Key (securely)
 # ----------------------------
-groq_client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+api_key = st.secrets.get("GROQ_API_KEY", os.getenv("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"))
+if not api_key:
+    st.error("🚨 Missing GROQ_API_KEY! Please set it in Streamlit Secrets or environment variables.")
+else:
+    groq_client = Groq(api_key=api_key)
 
 # ----------------------------
 # 🗂️ Ensure folders exist
@@ -25,7 +29,7 @@ def transcribe_audio(filepath):
     try:
         with open(filepath, "rb") as f:
             response = groq_client.audio.transcriptions.create(
-                model="whisper-large-v3",  # ✅ updated model name
+                model="whisper-large-v3",  # ✅ Correct model
                 file=f,
             )
         return response.text
@@ -41,7 +45,7 @@ def get_answer(question):
 
     try:
         response = groq_client.chat.completions.create(
-            model="llama-3.1-70b-versatile",  # ✅ updated model name
+            model="llama-3.1-70b-versatile",  # ✅ Correct model
             messages=[
                 {"role": "system", "content": "You are a helpful agriculture chatbot for Indian farmers. Give short, practical, and clear answers in simple English or Hindi if needed."},
                 {"role": "user", "content": question}
