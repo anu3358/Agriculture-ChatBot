@@ -23,7 +23,18 @@
 - 🌐 **Web + Console Interfaces**: Seamless experience in both browser and terminal.
 
 ---
+##some questions to ask
 
+
+“Which fertilizer is best for wheat in Punjab?”
+
+“How often should I water tomato plants?”
+
+“What is the best season to grow rice?”
+
+“How can I control pests in sugarcane naturally?”
+
+“Suggest organic farming methods for vegetables.”
 ## 🔧 Built With:
 - 🐍 Python + Flask
 - 🧠 Groq AI API + Whisper Large V3 Turbo
